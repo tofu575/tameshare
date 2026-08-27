@@ -1,0 +1,25 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+autobins = false
+
+[[bin]]
+name = "api"
+path = "src/bin.rs"
+
+[lib]
+name = "app"
+path = "src/lib.rs"
+
+[dependencies]
+actix-cors = { workspace = true }
+actix-web = { workspace = true }
+domain-usecase = { workspace = true }
+http_handlers = { workspace = true }
+libs = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+serde = { workspace = true }

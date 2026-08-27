@@ -1,0 +1,16 @@
+name: dummy_gateway
+description: "Dummy gateway implementation for local development"
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  model:
+    path: ../../domain/model
+  usecase:
+    path: ../../domain/usecase
+
+dev_dependencies:
+  lints: ^5.0.0
