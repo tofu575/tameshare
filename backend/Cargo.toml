@@ -1,0 +1,38 @@
+[workspace]
+members = [
+    "apps",
+    "domain/model",
+    "domain/usecase",
+    "gateway/dummy_gateway",
+    "gateway/http_handlers",
+    "gateway/postgres_gateway",
+    "libs",
+    "macros",
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Internal crates
+domain-model = { path = "domain/model" }
+domain-usecase = { path = "domain/usecase" }
+dummy_gateway = { path = "gateway/dummy_gateway" }
+http_handlers = { path = "gateway/http_handlers" }
+libs = { path = "libs" }
+macros = { path = "macros" }
+postgres_gateway = { path = "gateway/postgres_gateway" }
+
+# External dependencies
+actix-cors = "0.7"
+actix-web = "4"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+diesel = { version = "2.2", features = ["chrono", "postgres", "uuid"] }
+diesel-async = { version = "0.5", features = ["bb8", "postgres"] }
+diesel_migrations = "2.2"
+futures-util = { version = "=0.3.32", features = ["async-await-macro"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["serde", "v7"] }
