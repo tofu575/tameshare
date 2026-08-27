@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::RunQueryDsl;
-use domain_model::{Experience, ExperienceId, ExperienceNote};
+use domain_model::{Experience, ExperienceId, ExperienceNote, PracticeId};
 use domain_usecase::gateway::{ExperienceRepository, RepositoryError};
 
 use crate::{
@@ -11,6 +11,33 @@ use crate::{
 
 #[async_trait]
 impl ExperienceRepository for PostgresRepository {
+    /// PracticeのExperienceを作成日時とIDの降順で安定してページ取得する。
+    async fn list_by_practice(
+        &self,
+        practice_id: PracticeId,
+        limit: u32,
+        offset: u64,
+    ) -> Result<Vec<Experience>, RepositoryError> {
+        let mut connection = self.connection().await?;
+        let rows = experiences::table
+            .filter(experiences::practice_id.eq(*practice_id.as_uuid()))
+            .select((
+                experiences::id,
+                experiences::practice_id,
+                experiences::user_id,
+                experiences::note,
+                experiences::created_at,
+                experiences::updated_at,
+            ))
+            .order((experiences::created_at.desc(), experiences::id.desc()))
+            .limit(i64::from(limit))
+            .offset(offset as i64)
+            .load::<ExperienceRow>(&mut connection)
+            .await
+            .map_err(PostgresRepositoryErrorMapper::map)?;
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
     /// ExperienceをDomain ModelからDB列へ変換して保存する。
     async fn insert(&self, experience: &Experience) -> Result<(), RepositoryError> {
         let mut connection = self.connection().await?;

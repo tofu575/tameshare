@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 domain-usecase = { workspace = true }
-dummy_gateway = { workspace = true }
+postgres_gateway = { workspace = true }

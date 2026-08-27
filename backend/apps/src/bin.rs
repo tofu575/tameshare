@@ -12,5 +12,8 @@ async fn main() -> std::io::Result<()> {
     let listener = std::net::TcpListener::bind(("0.0.0.0", 8080))?;
     tracing::info!(address = %listener.local_addr()?, "server started");
 
-    run(listener, build_interactor()).await
+    let interactor = build_interactor()
+        .await
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    run(listener, interactor).await
 }
