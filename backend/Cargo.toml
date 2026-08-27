@@ -3,7 +3,6 @@ members = [
     "apps",
     "domain/model",
     "domain/usecase",
-    "gateway/dummy_gateway",
     "gateway/http_handlers",
     "gateway/postgres_gateway",
     "libs",
@@ -15,7 +14,6 @@ resolver = "2"
 # Internal crates
 domain-model = { path = "domain/model" }
 domain-usecase = { path = "domain/usecase" }
-dummy_gateway = { path = "gateway/dummy_gateway" }
 http_handlers = { path = "gateway/http_handlers" }
 libs = { path = "libs" }
 macros = { path = "macros" }

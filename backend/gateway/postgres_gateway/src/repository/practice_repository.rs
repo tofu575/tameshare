@@ -11,6 +11,20 @@ use crate::{
 
 #[async_trait]
 impl PracticeRepository for PostgresRepository {
+    /// Practiceを作成日時とIDの降順で安定してページ取得する。
+    async fn list(&self, limit: u32, offset: u64) -> Result<Vec<Practice>, RepositoryError> {
+        let mut connection = self.connection().await?;
+        practices::table
+            .select((practices::id, practices::title, practices::created_at))
+            .order((practices::created_at.desc(), practices::id.desc()))
+            .limit(i64::from(limit))
+            .offset(offset as i64)
+            .load::<PracticeRow>(&mut connection)
+            .await
+            .map(|rows| rows.into_iter().map(Into::into).collect())
+            .map_err(PostgresRepositoryErrorMapper::map)
+    }
+
     /// PracticeをDomain ModelからDB列へ変換して保存する。
     async fn insert(&self, practice: &Practice) -> Result<(), RepositoryError> {
         let mut connection = self.connection().await?;
