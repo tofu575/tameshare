@@ -4,9 +4,9 @@ use domain_usecase::gateway::RepositoryError;
 const LISTING_REQUEST_SOURCE_URL_UNIQUE: &str = "listing_requests_source_url_unique";
 
 /// Diesel固有エラーをDomain側のRepositoryErrorへ変換する。
-pub(crate) struct PostgresRepositoryErrorMapper;
+pub(crate) struct PostgresqlGatewayErrorMapper;
 
-impl PostgresRepositoryErrorMapper {
+impl PostgresqlGatewayErrorMapper {
     /// 一般的なDieselエラーをInfrastructure非依存のエラーへ変換する。
     pub(crate) fn map(error: DieselError) -> RepositoryError {
         match error {

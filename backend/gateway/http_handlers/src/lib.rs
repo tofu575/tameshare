@@ -362,10 +362,7 @@ mod tests {
         Experience, ExperienceId, ListingRequest, ListingRequestId, Practice, PracticeId, Source,
         SourceId, SourceUrl,
     };
-    use domain_usecase::gateway::{
-        ExperienceRepository, ListingRequestRepository, PracticeRepository,
-        PracticeSourceRepository, RepositoryError,
-    };
+    use domain_usecase::gateway::{CommandGateway, QueryGateway, RepositoryError};
     use std::sync::Arc;
 
     use super::*;
@@ -374,29 +371,51 @@ mod tests {
     struct Stub;
 
     #[async_trait]
-    impl PracticeRepository for Stub {
-        async fn list(&self, _: u32, _: u64) -> Result<Vec<Practice>, RepositoryError> {
-            Ok(vec![])
-        }
-        async fn insert(&self, _: &Practice) -> Result<(), RepositoryError> {
+    impl CommandGateway for Stub {
+        async fn insert_practice(&self, _: &Practice) -> Result<(), RepositoryError> {
             Ok(())
         }
-        async fn find(&self, _: PracticeId) -> Result<Option<Practice>, RepositoryError> {
+        async fn insert_source(&self, _: &Source) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+        async fn link_practice_source(
+            &self,
+            _: PracticeId,
+            _: SourceId,
+        ) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+        async fn insert_experience(&self, _: &Experience) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+        async fn update_experience(&self, _: &Experience) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+        async fn insert_listing_request(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+        async fn update_listing_request(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
+            Ok(())
+        }
+    }
+    #[async_trait]
+    impl QueryGateway for Stub {
+        async fn list_practices(&self, _: u32, _: u64) -> Result<Vec<Practice>, RepositoryError> {
+            Ok(vec![])
+        }
+        async fn find_practice(&self, _: PracticeId) -> Result<Option<Practice>, RepositoryError> {
             Ok(None)
         }
-    }
-    #[async_trait]
-    impl PracticeSourceRepository for Stub {
-        async fn link(&self, _: PracticeId, _: SourceId) -> Result<(), RepositoryError> {
-            Ok(())
+        async fn find_source(&self, _: SourceId) -> Result<Option<Source>, RepositoryError> {
+            Ok(None)
         }
-        async fn find_sources(&self, _: PracticeId) -> Result<Vec<Source>, RepositoryError> {
+        async fn find_sources_by_practice(
+            &self,
+            _: PracticeId,
+        ) -> Result<Vec<Source>, RepositoryError> {
             Ok(vec![])
         }
-    }
-    #[async_trait]
-    impl ExperienceRepository for Stub {
-        async fn list_by_practice(
+        async fn list_experiences_by_practice(
             &self,
             _: PracticeId,
             _: u32,
@@ -404,47 +423,30 @@ mod tests {
         ) -> Result<Vec<Experience>, RepositoryError> {
             Ok(vec![])
         }
-        async fn insert(&self, _: &Experience) -> Result<(), RepositoryError> {
-            Ok(())
-        }
-        async fn find(&self, _: ExperienceId) -> Result<Option<Experience>, RepositoryError> {
+        async fn find_experience(
+            &self,
+            _: ExperienceId,
+        ) -> Result<Option<Experience>, RepositoryError> {
             Ok(None)
         }
-        async fn update(&self, _: &Experience) -> Result<(), RepositoryError> {
-            Ok(())
-        }
-    }
-    #[async_trait]
-    impl ListingRequestRepository for Stub {
-        async fn insert(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
-            Ok(())
-        }
-        async fn find(
+        async fn find_listing_request(
             &self,
             _: ListingRequestId,
         ) -> Result<Option<ListingRequest>, RepositoryError> {
             Ok(None)
         }
-        async fn find_by_source_url(
+        async fn find_listing_request_by_source_url(
             &self,
             _: &SourceUrl,
         ) -> Result<Option<ListingRequest>, RepositoryError> {
             Ok(None)
-        }
-        async fn update(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
-            Ok(())
         }
     }
 
     /// Stubを本番と同じinterfaceからInteractorへ注入する。
     fn interactor() -> Interactor {
         let repository = Arc::new(Stub);
-        Interactor::new(
-            repository.clone(),
-            repository.clone(),
-            repository.clone(),
-            repository,
-        )
+        Interactor::new(repository.clone(), repository)
     }
 
     /// malformed UUIDが400になることを確認する。

@@ -1,7 +1,8 @@
+mod command;
 mod error;
-mod postgres_repository;
-mod repository;
+mod postgresql_gateway;
+mod query;
 mod row;
 mod schema;
 
-pub use postgres_repository::{PgPool, PostgresRepository};
+pub use postgresql_gateway::{PgPool, PostgresqlGateway};

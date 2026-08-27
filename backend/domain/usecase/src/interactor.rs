@@ -7,10 +7,7 @@ use domain_model::{
 };
 use thiserror::Error;
 
-use crate::gateway::{
-    ExperienceRepository, ListingRequestRepository, PracticeRepository, PracticeSourceRepository,
-    RepositoryError,
-};
+use crate::gateway::{CommandGateway, QueryGateway, RepositoryError};
 
 /// APIから独立した一覧ページ指定。
 #[derive(Debug, Clone, Copy)]
@@ -117,26 +114,14 @@ impl From<SourceUrlError> for UseCaseError {
 /// MVPのユーザー操作をRepository境界上で調整するInteractor。
 #[derive(Clone)]
 pub struct Interactor {
-    practices: Arc<dyn PracticeRepository>,
-    practice_sources: Arc<dyn PracticeSourceRepository>,
-    experiences: Arc<dyn ExperienceRepository>,
-    listing_requests: Arc<dyn ListingRequestRepository>,
+    command: Arc<dyn CommandGateway>,
+    query: Arc<dyn QueryGateway>,
 }
 
 impl Interactor {
-    /// 必須Repositoryを単一経路で注入する。
-    pub fn new(
-        practices: Arc<dyn PracticeRepository>,
-        practice_sources: Arc<dyn PracticeSourceRepository>,
-        experiences: Arc<dyn ExperienceRepository>,
-        listing_requests: Arc<dyn ListingRequestRepository>,
-    ) -> Self {
-        Self {
-            practices,
-            practice_sources,
-            experiences,
-            listing_requests,
-        }
+    /// 状態変更と参照のGatewayをそれぞれ必須依存として注入する。
+    pub fn new(command: Arc<dyn CommandGateway>, query: Arc<dyn QueryGateway>) -> Self {
+        Self { command, query }
     }
 
     /// Practiceを新着順でページ取得する。
@@ -145,8 +130,8 @@ impl Interactor {
         page: PageInput,
     ) -> Result<Page<PracticeSummary>, UseCaseError> {
         let rows = self
-            .practices
-            .list(page.limit + 1, page.offset)
+            .query
+            .list_practices(page.limit + 1, page.offset)
             .await
             .map_err(map_repository_error)?;
         Ok(make_page(
@@ -164,14 +149,14 @@ impl Interactor {
     /// Practiceと関連Sourceを詳細出力として取得する。
     pub async fn get_practice(&self, id: PracticeId) -> Result<PracticeDetail, UseCaseError> {
         let practice = self
-            .practices
-            .find(id)
+            .query
+            .find_practice(id)
             .await
             .map_err(map_repository_error)?
             .ok_or(UseCaseError::NotFound)?;
         let sources = self
-            .practice_sources
-            .find_sources(id)
+            .query
+            .find_sources_by_practice(id)
             .await
             .map_err(map_repository_error)?;
         Ok(PracticeDetail {
@@ -194,8 +179,8 @@ impl Interactor {
         page: PageInput,
     ) -> Result<Page<ExperienceOutput>, UseCaseError> {
         if self
-            .practices
-            .find(practice_id)
+            .query
+            .find_practice(practice_id)
             .await
             .map_err(map_repository_error)?
             .is_none()
@@ -203,8 +188,8 @@ impl Interactor {
             return Err(UseCaseError::NotFound);
         }
         let rows = self
-            .experiences
-            .list_by_practice(practice_id, page.limit + 1, page.offset)
+            .query
+            .list_experiences_by_practice(practice_id, page.limit + 1, page.offset)
             .await
             .map_err(map_repository_error)?;
         Ok(make_page(
@@ -221,8 +206,8 @@ impl Interactor {
         note: Option<String>,
     ) -> Result<ExperienceOutput, UseCaseError> {
         if self
-            .practices
-            .find(practice_id)
+            .query
+            .find_practice(practice_id)
             .await
             .map_err(map_repository_error)?
             .is_none()
@@ -231,8 +216,8 @@ impl Interactor {
         }
         let note = note.map(ExperienceNote::try_from).transpose()?;
         let experience = Experience::new(practice_id, user_id, note);
-        self.experiences
-            .insert(&experience)
+        self.command
+            .insert_experience(&experience)
             .await
             .map_err(map_repository_error)?;
         Ok(experience_output(experience))
@@ -246,8 +231,8 @@ impl Interactor {
         note: Option<String>,
     ) -> Result<ExperienceOutput, UseCaseError> {
         let mut experience = self
-            .experiences
-            .find(id)
+            .query
+            .find_experience(id)
             .await
             .map_err(map_repository_error)?
             .ok_or(UseCaseError::NotFound)?;
@@ -255,8 +240,8 @@ impl Interactor {
             return Err(UseCaseError::Forbidden);
         }
         experience.update_note(note.map(ExperienceNote::try_from).transpose()?);
-        self.experiences
-            .update(&experience)
+        self.command
+            .update_experience(&experience)
             .await
             .map_err(map_repository_error)?;
         Ok(experience_output(experience))
@@ -270,12 +255,12 @@ impl Interactor {
     ) -> Result<ListingRequestOutput, UseCaseError> {
         let source_url = SourceUrl::try_from(source_url)?;
         let request = ListingRequest::new(source_url.clone(), user_id);
-        match self.listing_requests.insert(&request).await {
+        match self.command.insert_listing_request(&request).await {
             Ok(()) => Ok(listing_request_output(request, true)),
             Err(RepositoryError::DuplicateListingRequest) => {
                 let existing = self
-                    .listing_requests
-                    .find_by_source_url(&source_url)
+                    .query
+                    .find_listing_request_by_source_url(&source_url)
                     .await
                     .map_err(map_repository_error)?
                     .ok_or(UseCaseError::Infrastructure)?;

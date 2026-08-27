@@ -1,18 +1,15 @@
 use async_trait::async_trait;
 use domain_model::{
     Experience, ExperienceId, ListingRequest, ListingRequestId, Practice, PracticeId, Source,
-    SourceUrl, UserId,
+    SourceId, SourceUrl, UserId,
 };
 use domain_usecase::{
     Interactor, PageInput, UseCaseError,
-    gateway::{
-        ExperienceRepository, ListingRequestRepository, PracticeRepository,
-        PracticeSourceRepository, RepositoryError,
-    },
+    gateway::{CommandGateway, QueryGateway, RepositoryError},
 };
 use std::sync::{Arc, Mutex};
 
-/// UseCase単体テスト用の本番Repository interface実装。
+/// UseCase単体テスト用のCommand/Query Gateway実装。
 #[derive(Default)]
 struct FakeRepository {
     practices: Mutex<Vec<Practice>>,
@@ -21,8 +18,54 @@ struct FakeRepository {
 }
 
 #[async_trait]
-impl PracticeRepository for FakeRepository {
-    async fn list(&self, limit: u32, offset: u64) -> Result<Vec<Practice>, RepositoryError> {
+impl CommandGateway for FakeRepository {
+    async fn insert_practice(&self, value: &Practice) -> Result<(), RepositoryError> {
+        self.practices.lock().unwrap().push(value.clone());
+        Ok(())
+    }
+    async fn insert_source(&self, _: &Source) -> Result<(), RepositoryError> {
+        Ok(())
+    }
+    async fn link_practice_source(
+        &self,
+        _: PracticeId,
+        _: SourceId,
+    ) -> Result<(), RepositoryError> {
+        Ok(())
+    }
+    async fn insert_experience(&self, value: &Experience) -> Result<(), RepositoryError> {
+        self.experiences.lock().unwrap().push(value.clone());
+        Ok(())
+    }
+    async fn update_experience(&self, value: &Experience) -> Result<(), RepositoryError> {
+        let mut values = self.experiences.lock().unwrap();
+        let item = values
+            .iter_mut()
+            .find(|x| x.id() == value.id())
+            .ok_or(RepositoryError::NotFound)?;
+        *item = value.clone();
+        Ok(())
+    }
+    async fn insert_listing_request(&self, value: &ListingRequest) -> Result<(), RepositoryError> {
+        let mut values = self.requests.lock().unwrap();
+        if values.iter().any(|x| x.source_url() == value.source_url()) {
+            return Err(RepositoryError::DuplicateListingRequest);
+        }
+        values.push(value.clone());
+        Ok(())
+    }
+    async fn update_listing_request(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl QueryGateway for FakeRepository {
+    async fn list_practices(
+        &self,
+        limit: u32,
+        offset: u64,
+    ) -> Result<Vec<Practice>, RepositoryError> {
         Ok(self
             .practices
             .lock()
@@ -33,11 +76,7 @@ impl PracticeRepository for FakeRepository {
             .cloned()
             .collect())
     }
-    async fn insert(&self, value: &Practice) -> Result<(), RepositoryError> {
-        self.practices.lock().unwrap().push(value.clone());
-        Ok(())
-    }
-    async fn find(&self, id: PracticeId) -> Result<Option<Practice>, RepositoryError> {
+    async fn find_practice(&self, id: PracticeId) -> Result<Option<Practice>, RepositoryError> {
         Ok(self
             .practices
             .lock()
@@ -46,23 +85,18 @@ impl PracticeRepository for FakeRepository {
             .find(|x| x.id() == id)
             .cloned())
     }
-}
-
-#[async_trait]
-impl PracticeSourceRepository for FakeRepository {
-    async fn link(&self, _: PracticeId, _: domain_model::SourceId) -> Result<(), RepositoryError> {
-        Ok(())
+    async fn find_source(&self, _: SourceId) -> Result<Option<Source>, RepositoryError> {
+        Ok(None)
     }
-    async fn find_sources(&self, _: PracticeId) -> Result<Vec<Source>, RepositoryError> {
+    async fn find_sources_by_practice(
+        &self,
+        _: PracticeId,
+    ) -> Result<Vec<Source>, RepositoryError> {
         Ok(vec![Source::new(
             SourceUrl::try_from("https://example.com").unwrap(),
         )])
     }
-}
-
-#[async_trait]
-impl ExperienceRepository for FakeRepository {
-    async fn list_by_practice(
+    async fn list_experiences_by_practice(
         &self,
         id: PracticeId,
         limit: u32,
@@ -79,11 +113,10 @@ impl ExperienceRepository for FakeRepository {
             .cloned()
             .collect())
     }
-    async fn insert(&self, value: &Experience) -> Result<(), RepositoryError> {
-        self.experiences.lock().unwrap().push(value.clone());
-        Ok(())
-    }
-    async fn find(&self, id: ExperienceId) -> Result<Option<Experience>, RepositoryError> {
+    async fn find_experience(
+        &self,
+        id: ExperienceId,
+    ) -> Result<Option<Experience>, RepositoryError> {
         Ok(self
             .experiences
             .lock()
@@ -92,28 +125,10 @@ impl ExperienceRepository for FakeRepository {
             .find(|x| x.id() == id)
             .cloned())
     }
-    async fn update(&self, value: &Experience) -> Result<(), RepositoryError> {
-        let mut values = self.experiences.lock().unwrap();
-        let item = values
-            .iter_mut()
-            .find(|x| x.id() == value.id())
-            .ok_or(RepositoryError::NotFound)?;
-        *item = value.clone();
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl ListingRequestRepository for FakeRepository {
-    async fn insert(&self, value: &ListingRequest) -> Result<(), RepositoryError> {
-        let mut values = self.requests.lock().unwrap();
-        if values.iter().any(|x| x.source_url() == value.source_url()) {
-            return Err(RepositoryError::DuplicateListingRequest);
-        }
-        values.push(value.clone());
-        Ok(())
-    }
-    async fn find(&self, id: ListingRequestId) -> Result<Option<ListingRequest>, RepositoryError> {
+    async fn find_listing_request(
+        &self,
+        id: ListingRequestId,
+    ) -> Result<Option<ListingRequest>, RepositoryError> {
         Ok(self
             .requests
             .lock()
@@ -122,7 +137,7 @@ impl ListingRequestRepository for FakeRepository {
             .find(|x| x.id() == id)
             .cloned())
     }
-    async fn find_by_source_url(
+    async fn find_listing_request_by_source_url(
         &self,
         url: &SourceUrl,
     ) -> Result<Option<ListingRequest>, RepositoryError> {
@@ -134,23 +149,15 @@ impl ListingRequestRepository for FakeRepository {
             .find(|x| x.source_url() == url)
             .cloned())
     }
-    async fn update(&self, _: &ListingRequest) -> Result<(), RepositoryError> {
-        Ok(())
-    }
 }
 
-/// 同一Fakeを全てのRepository abstractionとして注入する。
+/// 同一FakeをCommand/Query両Portとして注入する。
 fn fixture() -> (Interactor, Arc<FakeRepository>, Practice) {
     let repository = Arc::new(FakeRepository::default());
     let practice = Practice::new("朝に散歩する");
     repository.practices.lock().unwrap().push(practice.clone());
     (
-        Interactor::new(
-            repository.clone(),
-            repository.clone(),
-            repository.clone(),
-            repository.clone(),
-        ),
+        Interactor::new(repository.clone(), repository.clone()),
         repository,
         practice,
     )

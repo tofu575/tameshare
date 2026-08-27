@@ -4,11 +4,8 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use domain_model::{
     Experience, ExperienceNote, ListingRequest, Practice, Source, SourceUrl, UserId,
 };
-use domain_usecase::gateway::{
-    ExperienceRepository, ListingRequestRepository, PracticeRepository, PracticeSourceRepository,
-    RepositoryError, SourceRepository,
-};
-use postgres_gateway::PostgresRepository;
+use domain_usecase::gateway::{CommandGateway, QueryGateway, RepositoryError};
+use postgres_gateway::PostgresqlGateway;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../../migrations");
 
@@ -52,18 +49,18 @@ fn reset_test_database_migrations(database_url: &str) {
 async fn repositories_round_trip_relations_and_enforce_listing_request_uniqueness() {
     let database_url = required_test_database_url();
     reset_test_database_migrations(&database_url);
-    let repository = PostgresRepository::connect(&database_url).await.unwrap();
+    let gateway = PostgresqlGateway::connect(&database_url).await.unwrap();
 
     let first_practice = Practice::new("25分だけ集中する");
     let second_practice = Practice::new("作業前に机を片付ける");
-    PracticeRepository::insert(&repository, &first_practice)
+    CommandGateway::insert_practice(&gateway, &first_practice)
         .await
         .unwrap();
-    PracticeRepository::insert(&repository, &second_practice)
+    CommandGateway::insert_practice(&gateway, &second_practice)
         .await
         .unwrap();
     assert_eq!(
-        PracticeRepository::find(&repository, first_practice.id())
+        QueryGateway::find_practice(&gateway, first_practice.id())
             .await
             .unwrap(),
         Some(first_practice.clone())
@@ -71,31 +68,31 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
 
     let first_source = Source::new(SourceUrl::try_from("https://example.com/focus").unwrap());
     let second_source = Source::new(SourceUrl::try_from("https://example.com/cleanup").unwrap());
-    SourceRepository::insert(&repository, &first_source)
+    CommandGateway::insert_source(&gateway, &first_source)
         .await
         .unwrap();
-    SourceRepository::insert(&repository, &second_source)
+    CommandGateway::insert_source(&gateway, &second_source)
         .await
         .unwrap();
-    PracticeSourceRepository::link(&repository, first_practice.id(), first_source.id())
+    CommandGateway::link_practice_source(&gateway, first_practice.id(), first_source.id())
         .await
         .unwrap();
-    PracticeSourceRepository::link(&repository, first_practice.id(), second_source.id())
+    CommandGateway::link_practice_source(&gateway, first_practice.id(), second_source.id())
         .await
         .unwrap();
-    PracticeSourceRepository::link(&repository, second_practice.id(), first_source.id())
+    CommandGateway::link_practice_source(&gateway, second_practice.id(), first_source.id())
         .await
         .unwrap();
     // 複合主キーによるlinkの冪等性も同時に確認する。
-    PracticeSourceRepository::link(&repository, first_practice.id(), first_source.id())
+    CommandGateway::link_practice_source(&gateway, first_practice.id(), first_source.id())
         .await
         .unwrap();
     let first_practice_sources =
-        PracticeSourceRepository::find_sources(&repository, first_practice.id())
+        QueryGateway::find_sources_by_practice(&gateway, first_practice.id())
             .await
             .unwrap();
     let second_practice_sources =
-        PracticeSourceRepository::find_sources(&repository, second_practice.id())
+        QueryGateway::find_sources_by_practice(&gateway, second_practice.id())
             .await
             .unwrap();
     assert_eq!(first_practice_sources.len(), 2);
@@ -116,21 +113,21 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
         UserId::generate(),
         Some(ExperienceNote::try_from("すぐに集中できた").unwrap()),
     );
-    ExperienceRepository::insert(&repository, &experience)
+    CommandGateway::insert_experience(&gateway, &experience)
         .await
         .unwrap();
     assert_eq!(
-        ExperienceRepository::find(&repository, experience.id())
+        QueryGateway::find_experience(&gateway, experience.id())
             .await
             .unwrap(),
         Some(experience.clone())
     );
     experience.update_note(None);
-    ExperienceRepository::update(&repository, &experience)
+    CommandGateway::update_experience(&gateway, &experience)
         .await
         .unwrap();
     assert_eq!(
-        ExperienceRepository::find(&repository, experience.id())
+        QueryGateway::find_experience(&gateway, experience.id())
             .await
             .unwrap()
             .unwrap()
@@ -141,16 +138,16 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
     let listing_url = SourceUrl::try_from("https://example.com/request-me").unwrap();
     let mut first = ListingRequest::new(listing_url.clone(), UserId::generate());
     first.reject();
-    ListingRequestRepository::insert(&repository, &first)
+    CommandGateway::insert_listing_request(&gateway, &first)
         .await
         .unwrap();
     let duplicate = ListingRequest::new(listing_url.clone(), UserId::generate());
     assert_eq!(
-        ListingRequestRepository::insert(&repository, &duplicate).await,
+        CommandGateway::insert_listing_request(&gateway, &duplicate).await,
         Err(RepositoryError::DuplicateListingRequest)
     );
     assert_eq!(
-        ListingRequestRepository::find_by_source_url(&repository, &listing_url)
+        QueryGateway::find_listing_request_by_source_url(&gateway, &listing_url)
             .await
             .unwrap(),
         Some(first.clone())
@@ -165,7 +162,7 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
         duplicate.updated_at(),
     );
     assert_eq!(
-        ListingRequestRepository::insert(&repository, &same_id_with_different_url).await,
+        CommandGateway::insert_listing_request(&gateway, &same_id_with_different_url).await,
         Err(RepositoryError::AlreadyExists)
     );
 }

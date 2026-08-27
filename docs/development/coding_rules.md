@@ -1,6 +1,6 @@
 # コーディング・設計ルール
 
-更新日: 2026-08-02
+更新日: 2026-08-27
 
 ## 目的
 
@@ -98,6 +98,40 @@ interactor/
 GatewayとInteractorの公開メソッドには、呼び出し側が実装を読まずに目的を判断できる
 短いドキュメントコメントを付ける。処理手順ではなく、取得する情報、変更する状態、原本へ
 影響するかなどの責務を書く。
+
+### BackendのCommand / Query Gateway
+
+Backendの永続化PortはAggregateごとのRepository interfaceに分割しない。Usecase側では、
+状態を変更する`CommandGateway`と、状態を参照する`QueryGateway`の2つに分ける。新しい
+Aggregateや操作を追加する場合も`PracticeRepository`や`ExperienceRepository`のような
+Aggregate単位のinterfaceを増やさず、処理の性質に応じてどちらかのGatewayへ追加する。
+
+Infrastructure側では、`PostgresqlGateway`がCommand / Query両方のinterfaceを実装する。
+CommandとQueryの実装ファイルは責務ごとに分けてよいが、connection pool、DieselのRow変換、
+schema、error mappingは同じGateway内で共有する。Usecase側のinterface名や型へPostgreSQL、
+Dieselなどの永続化技術を露出させない。
+
+```text
+Interactor
+  ├─ CommandGateway ─┐
+  └─ QueryGateway ───┴─ PostgresqlGateway ─ Diesel ─ PostgreSQL
+```
+
+### Backend API契約
+
+Backendの現在のHTTP API契約は
+`backend/docs/openapi/tameshare.openapi.yaml`を正とする。path、HTTP method、status code、
+認証要否、request / response field、validationを変更する場合は、HTTP実装とテストに加えて
+OpenAPIも同じ変更で更新する。実装だけ、またはOpenAPIだけを先行させた不一致を残さない。
+
+OpenAPIは3.1形式を使い、operationには一意な`operationId`と機能別のtagを付ける。共通の
+ID、日時、URL、path / query parameter、error responseは`components`へ定義して参照する。
+object schemaではrequired fieldと未知fieldの許可・禁止を明示し、主要なrequest / responseに
+exampleと目的が分かるdescriptionを付ける。
+
+JSON fieldは現在のBackend実装と同じsnake_caseを使用する。認証が必要なoperationは既存の
+匿名認証によるBearer tokenを使い、User IDをrequest bodyから受け取らない。公開operationは
+OpenAPI上で`security: []`を明示する。
 
 一方で、単にInteractorメソッドをそのまま呼び出すだけの専用Providerは増やさない。
 Providerを作るのは、非同期状態、画面間共有、再読込、依存Providerのinvalidateなど、
