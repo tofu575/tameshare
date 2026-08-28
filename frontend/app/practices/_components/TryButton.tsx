@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export function TryButton() {
+export const TryButton = () => {
   const [tried, setTried] = useState(false);
 
   return (

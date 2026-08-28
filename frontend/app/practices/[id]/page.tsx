@@ -1,13 +1,23 @@
-import { fetchPractices } from '@/lib/api/practice';
-import { PracticeList } from '../_components/PracticeList';
+import { notFound } from "next/navigation";
+import { getPracticeRepository } from "@/lib/practice/getPracticeRepository";
 
-export default async function Page() {
-  const practices = await fetchPractices();
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function Page({ params }: Props) {
+  const { id } = await params;
+  const repository = await getPracticeRepository();
+  const practice = await repository.findById(id);
+
+  if (!practice) {
+    notFound();
+  }
 
   return (
     <main>
-      <h1>Practice一覧</h1>
-      <PracticeList practices={practices} />
+      <h1>{practice.title}</h1>
+      <p>{practice.description}</p>
     </main>
   );
 }
