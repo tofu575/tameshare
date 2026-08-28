@@ -1,11 +1,15 @@
+import PankuzuLayout from "./_components/pankuzu";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body>{children}</body>
-    </html>
+    <PankuzuLayout>
+      <html lang="ja">
+        <body>{children}</body>
+      </html>
+    </PankuzuLayout>
   );
 }
