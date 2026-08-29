@@ -1,17 +1,48 @@
-# Application Templates
+# 試Share
 
-単独でアプリケーション開発を開始できるテンプレートを管理するリポジトリです。
+短時間で試せるPracticeと、実際に試したExperienceを共有するサービスです。
 
-## 構成
+## ローカル開発
 
-- `mobile/`: モバイルアプリ向け
-- `frontend/`: フロントエンド向け
-- `backend/`: バックエンド向け
-- `shared/`: テンプレート管理で共有するツール
+Docker、Rust、Node.js、direnvを用意し、最初に環境ファイルと依存関係を準備します。
 
-現在利用できるテンプレート:
+```bash
+make setup
+```
 
-- `mobile/templates/flutter_multi_package/`
-- `frontend/templates/react_clean_architecture/`
+PostgreSQLを起動した後、BackendとFrontendをそれぞれ別ターミナルで起動します。
 
-コーディングルールや設計資料は各テンプレート内の`docs/`を参照してください。
+```bash
+make postgres-up
+make backend-run
+make frontend-run
+```
+
+`make postgres-up`はPostgreSQLのhealthcheckを待ってからmigrationも適用します。
+migrationだけを再適用する場合は次を実行します。
+
+```bash
+make db-migrate
+```
+
+Frontendは http://localhost:3000、Backendは http://localhost:8080 で起動します。
+両方の起動後、主要な接続を確認できます。
+
+```bash
+make smoke
+```
+
+## 検査・コード生成
+
+```bash
+make check
+make api-generate
+```
+
+Root Makefileは各レイヤーの入口だけを提供します。個別のbuild、lint、test、formatは
+`backend/Makefile`と`frontend/Makefile`を利用してください。
+
+```bash
+make -C backend help
+make -C frontend help
+```

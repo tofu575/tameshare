@@ -26,9 +26,10 @@ Domain crateはDiesel、PostgreSQL、HTTPへ依存しません。
 
 ```bash
 cp .envrc.template .envrc
-# .envrcのDATABASE_URL、TEST_DATABASE_URL、RUST_LOGをローカル環境に合わせて編集
+# 必要なら.envrcの接続先をローカル環境に合わせて編集
 direnv allow
-docker compose up -d --wait postgres
+make db-up
+make db-migrate
 ```
 
 `TEST_DATABASE_URL`は通常DBと分離し、DB名が`_test`で終わる接続先を指定してください。
@@ -46,35 +47,35 @@ Repository integration test自身も、開始時にmigrationを全rollbackして
 ローカルビルドにはlibpqが必要です。Homebrewのkeg-only配置は自動検出し、
 それ以外の非標準配置では`PQ_LIB_DIR`を指定できます。
 
-## Routes
+## 主なRoutes
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Actix の疎通確認 |
-| `GET` | `/example` | Interactor から DummyGateway を呼ぶ最小例 |
-
-`/example` は成功時に `204 No Content` を返します。
+| `GET` | `/v1/practices` | Practice一覧 |
+| `GET` | `/v1/practices/{id}` | Practice詳細 |
+| `GET, POST` | `/v1/practices/{id}/experiences` | Experience一覧・作成 |
+| `PATCH` | `/v1/experiences/{id}` | Experience更新 |
+| `POST` | `/v1/listing-requests` | 掲載リクエスト作成 |
 
 ## Run
 
 ```bash
-cargo run --bin api
+make run
 ```
 
 別ターミナルから確認できます。
 
 ```bash
 curl http://localhost:8080/health
-curl -i http://localhost:8080/example
+curl http://localhost:8080/v1/practices
 ```
 
 ## Build and test
 
 ```bash
-cargo build --workspace
-cargo test --workspace
-cargo test -p postgres_gateway --test repository_integration
+make build
+make test
+make integration-test
+make check
 ```
-
-HTTP APIと本格的なUseCaseは次段階の対象です。現状の `/example` はテンプレートの
-依存方向を保つための疎通用であり、RepositoryはまだHTTP層へ配線していません。
