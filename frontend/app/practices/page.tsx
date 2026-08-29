@@ -9,7 +9,8 @@ export default async function Page() {
 
   return (
     <main>
-      <h1>Practice一覧</h1>
+      <h1>Practiceを探す</h1>
+      <p>登録されている、実際に試せる方法の一覧です。</p>
       <PracticeList practices={practices} />
     </main>
   );
