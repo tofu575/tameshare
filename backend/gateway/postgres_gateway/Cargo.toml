@@ -1,0 +1,18 @@
+[package]
+name = "postgres_gateway"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = { workspace = true }
+chrono = { workspace = true }
+diesel = { workspace = true }
+diesel-async = { workspace = true }
+domain-model = { workspace = true }
+domain-usecase = { workspace = true }
+futures-util = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+diesel_migrations = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

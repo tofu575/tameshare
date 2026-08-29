@@ -1,0 +1,18 @@
+[package]
+name = "http_handlers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = { workspace = true }
+domain-usecase = { workspace = true }
+domain-model = { workspace = true }
+serde = { workspace = true }
+serde_json = "1"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }
+domain-model = { workspace = true }
+tracing = { workspace = true }
