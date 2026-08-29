@@ -5,7 +5,7 @@
  * TameshareのMVP API契約。
  *
  * Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
- * 認証が必要なoperationでは既存の匿名認証が発行したBearer tokenを使用し、
+ * 認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
  * user IDをrequest bodyから受け取らない。
  *
  * OpenAPI spec version: 1.0.0
@@ -20,6 +20,7 @@ import type {
   ValidationFailedResponse
 } from '../../model';
 
+import { apiFetch } from '../../../api/apiFetch';
 
 export type listPracticesResponse200 = {
   data: PracticePage
@@ -63,23 +64,16 @@ export const getListPracticesUrl = (params?: ListPracticesParams,) => {
 /**
  * @summary Practiceを新着順で一覧取得する
  */
-export const listPractices = async (params?: ListPracticesParams, options?: RequestInit): Promise<listPracticesResponse> => {
+export const listPractices = async (params?: ListPracticesParams, options?: Parameters<typeof apiFetch>[1]): Promise<listPracticesResponse> => {
 
-  const res = await fetch(getListPracticesUrl(params),
+  return apiFetch<listPracticesResponse>(getListPracticesUrl(params),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: listPracticesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as listPracticesResponse
-}
+);}
 
 
 export type getPracticeResponse200 = {
@@ -122,22 +116,15 @@ export const getGetPracticeUrl = (practiceId: string,) => {
 /**
  * @summary Practiceと関連Sourceを取得する
  */
-export const getPractice = async (practiceId: string, options?: RequestInit): Promise<getPracticeResponse> => {
+export const getPractice = async (practiceId: string, options?: Parameters<typeof apiFetch>[1]): Promise<getPracticeResponse> => {
 
-  const res = await fetch(getGetPracticeUrl(practiceId),
+  return apiFetch<getPracticeResponse>(getGetPracticeUrl(practiceId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: getPracticeResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getPracticeResponse
-}
+);}
 
 

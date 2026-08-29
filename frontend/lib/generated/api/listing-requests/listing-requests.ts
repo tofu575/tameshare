@@ -5,7 +5,7 @@
  * TameshareのMVP API契約。
  *
  * Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
- * 認証が必要なoperationでは既存の匿名認証が発行したBearer tokenを使用し、
+ * 認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
  * user IDをrequest bodyから受け取らない。
  *
  * OpenAPI spec version: 1.0.0
@@ -18,6 +18,7 @@ import type {
   ValidationFailedResponse
 } from '../../model';
 
+import { apiFetch } from '../../../api/apiFetch';
 
 export type createListingRequestResponse200 = {
   data: ListingRequestResult
@@ -66,7 +67,7 @@ export const getCreateListingRequestUrl = () => {
  * 同一URLの依頼が既に存在する場合は新規作成せず、200と`created: false`を返す。
  * @summary Source URLの掲載を依頼する
  */
-export const createListingRequest = async (listingRequestInput: ListingRequestInput, options?: RequestInit): Promise<createListingRequestResponse> => {
+export const createListingRequest = async (listingRequestInput: ListingRequestInput, options?: Parameters<typeof apiFetch>[1]): Promise<createListingRequestResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -74,20 +75,13 @@ export const createListingRequest = async (listingRequestInput: ListingRequestIn
     if (Array.isArray(h)) return Object.fromEntries(h);
     return h;
   };
-const res = await fetch(getCreateListingRequestUrl(),
+return apiFetch<createListingRequestResponse>(getCreateListingRequestUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(listingRequestInput)
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: createListingRequestResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as createListingRequestResponse
-}
+);}
 
 

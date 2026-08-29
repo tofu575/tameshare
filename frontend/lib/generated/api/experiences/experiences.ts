@@ -5,7 +5,7 @@
  * TameshareのMVP API契約。
  *
  * Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
- * 認証が必要なoperationでは既存の匿名認証が発行したBearer tokenを使用し、
+ * 認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
  * user IDをrequest bodyから受け取らない。
  *
  * OpenAPI spec version: 1.0.0
@@ -23,6 +23,7 @@ import type {
   ValidationFailedResponse
 } from '../../model';
 
+import { apiFetch } from '../../../api/apiFetch';
 
 export type listExperiencesResponse200 = {
   data: ExperiencePage
@@ -78,23 +79,16 @@ export const getListExperiencesUrl = (practiceId: string,
  * @summary PracticeのExperienceを新着順で一覧取得する
  */
 export const listExperiences = async (practiceId: string,
-    params?: ListExperiencesParams, options?: RequestInit): Promise<listExperiencesResponse> => {
+    params?: ListExperiencesParams, options?: Parameters<typeof apiFetch>[1]): Promise<listExperiencesResponse> => {
 
-  const res = await fetch(getListExperiencesUrl(practiceId,params),
+  return apiFetch<listExperiencesResponse>(getListExperiencesUrl(practiceId,params),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: listExperiencesResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as listExperiencesResponse
-}
+);}
 
 
 export type createExperienceResponse201 = {
@@ -148,7 +142,7 @@ export const getCreateExperienceUrl = (practiceId: string,) => {
  * @summary 認証中UserのExperienceを記録する
  */
 export const createExperience = async (practiceId: string,
-    experienceInput: ExperienceInput, options?: RequestInit): Promise<createExperienceResponse> => {
+    experienceInput: ExperienceInput, options?: Parameters<typeof apiFetch>[1]): Promise<createExperienceResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -156,21 +150,14 @@ export const createExperience = async (practiceId: string,
     if (Array.isArray(h)) return Object.fromEntries(h);
     return h;
   };
-const res = await fetch(getCreateExperienceUrl(practiceId),
+return apiFetch<createExperienceResponse>(getCreateExperienceUrl(practiceId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(experienceInput)
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: createExperienceResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as createExperienceResponse
-}
+);}
 
 
 export type updateExperienceResponse200 = {
@@ -229,7 +216,7 @@ export const getUpdateExperienceUrl = (experienceId: string,) => {
  * @summary 認証中Userが所有するExperienceを更新する
  */
 export const updateExperience = async (experienceId: string,
-    experienceInput: ExperienceInput, options?: RequestInit): Promise<updateExperienceResponse> => {
+    experienceInput: ExperienceInput, options?: Parameters<typeof apiFetch>[1]): Promise<updateExperienceResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -237,20 +224,13 @@ export const updateExperience = async (experienceId: string,
     if (Array.isArray(h)) return Object.fromEntries(h);
     return h;
   };
-const res = await fetch(getUpdateExperienceUrl(experienceId),
+return apiFetch<updateExperienceResponse>(getUpdateExperienceUrl(experienceId),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(experienceInput)
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: updateExperienceResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as updateExperienceResponse
-}
+);}
 
 

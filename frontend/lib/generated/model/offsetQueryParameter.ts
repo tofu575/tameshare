@@ -5,7 +5,7 @@
  * TameshareのMVP API契約。
  *
  * Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
- * 認証が必要なoperationでは既存の匿名認証が発行したBearer tokenを使用し、
+ * 認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
  * user IDをrequest bodyから受け取らない。
  *
  * OpenAPI spec version: 1.0.0
