@@ -15,7 +15,7 @@ export default function PankuzuLayout({
             <Link href="/">ホーム</Link>
           </li>
           <li>
-            <Link href="/practices/practice-1">試すこと一覧</Link>
+            <Link href="/practices">試すこと一覧</Link>
           </li>
         </ol>
       </nav>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPracticeRepository } from "@/lib/practice/getPracticeRepository";
+import { TryButton } from "../_components/TryButton";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -18,6 +19,7 @@ export default async function Page({ params }: Props) {
     <main>
       <h1>{practice.title}</h1>
       <p>{practice.description}</p>
+    <TryButton/>
     </main>
   );
 }

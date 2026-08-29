@@ -6,6 +6,8 @@ import { mockPractices } from "./mockPractices";
 
 export class MockPracticeRepository implements PracticeRepository {
   async findAll(): Promise<Practice[]> {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     return mockPractices.map((practice) => ({ ...practice }));
   }
 
