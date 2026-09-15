@@ -1,0 +1,117 @@
+:root {
+  color: #202020;
+  background: #faf9f6;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: #075985;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+
+.site-header,
+.site-footer,
+main,
+.practice-area {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  border-bottom: 1px solid #ddd;
+}
+.site-header nav ul,
+.breadcrumbs ol,
+.card-list {
+  list-style: none;
+  padding: 0;
+}
+.site-header nav ul,
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.site-title {
+  color: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.site-footer {
+  margin-top: 3rem;
+  border-top: 1px solid #ddd;
+}
+.hero {
+  padding: 2rem 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.button-link,
+button {
+  display: inline-block;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #075985;
+  border-radius: 0.3rem;
+  background: #075985;
+  color: white;
+  text-decoration: none;
+}
+.card-list {
+  display: grid;
+  gap: 1rem;
+}
+.card {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 0.4rem;
+  background: white;
+}
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+.form-field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1rem 0;
+  max-width: 36rem;
+}
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #999;
+  border-radius: 0.25rem;
+}
+.form-message {
+  padding: 0.75rem;
+  background: #eef7ee;
+}
+.form-error {
+  color: #a11313;
+}
+.muted {
+  color: #666;
+}

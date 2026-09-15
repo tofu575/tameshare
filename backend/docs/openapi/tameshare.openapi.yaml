@@ -1,0 +1,558 @@
+openapi: 3.1.0
+info:
+  title: Tameshare API
+  summary: ためしてよかった行動を共有するサービスのAPI
+  version: 1.0.0
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+  description: |
+    TameshareのMVP API契約。
+
+    Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
+    認証が必要なoperationでは既存の匿名認証が発行したBearer tokenを使用し、
+    user IDをrequest bodyから受け取らない。
+servers:
+  - url: /
+    description: OpenAPIを配信したhostと同じorigin
+tags:
+  - name: Practices
+    description: Practiceと関連Sourceの閲覧
+  - name: Experiences
+    description: PracticeをためしたExperienceの閲覧・記録・更新
+  - name: ListingRequests
+    description: Source URLの掲載依頼
+security:
+  - bearerAuth: []
+paths:
+  /v1/practices:
+    get:
+      tags:
+        - Practices
+      summary: Practiceを新着順で一覧取得する
+      operationId: listPractices
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Practiceのページ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PracticePage'
+              example:
+                items:
+                  - id: 0193c6f7-28b8-7d27-b210-26d13b74d501
+                    title: 25分だけ集中する
+                    created_at: '2026-08-27T01:23:45Z'
+                limit: 20
+                offset: 0
+                has_more: false
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/practices/{practiceId}:
+    parameters:
+      - $ref: '#/components/parameters/PracticeIdPath'
+    get:
+      tags:
+        - Practices
+      summary: Practiceと関連Sourceを取得する
+      operationId: getPractice
+      security: []
+      responses:
+        '200':
+          description: Practiceの詳細
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PracticeDetail'
+              example:
+                id: 0193c6f7-28b8-7d27-b210-26d13b74d501
+                title: 25分だけ集中する
+                created_at: '2026-08-27T01:23:45Z'
+                sources:
+                  - url: https://example.com/focus
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/practices/{practiceId}/experiences:
+    parameters:
+      - $ref: '#/components/parameters/PracticeIdPath'
+    get:
+      tags:
+        - Experiences
+      summary: PracticeのExperienceを新着順で一覧取得する
+      operationId: listExperiences
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Experienceのページ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperiencePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Experiences
+      summary: 認証中UserのExperienceを記録する
+      operationId: createExperience
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperienceInput'
+            examples:
+              withNote:
+                summary: Noteを記録する
+                value:
+                  note: すぐに集中できた
+              withoutNote:
+                summary: Noteを記録しない
+                value:
+                  note: null
+      responses:
+        '201':
+          description: 作成したExperience
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experience'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/experiences/{experienceId}:
+    parameters:
+      - $ref: '#/components/parameters/ExperienceIdPath'
+    patch:
+      tags:
+        - Experiences
+      summary: 認証中Userが所有するExperienceを更新する
+      operationId: updateExperience
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperienceInput'
+            example:
+              note: 翌日も続けられた
+      responses:
+        '200':
+          description: 更新したExperience
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experience'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/listing-requests:
+    post:
+      tags:
+        - ListingRequests
+      summary: Source URLの掲載を依頼する
+      description: |
+        未登録URLでは掲載依頼を作成して201と`created: true`を返す。
+        同一URLの依頼が既に存在する場合は新規作成せず、200と`created: false`を返す。
+      operationId: createListingRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingRequestInput'
+            example:
+              source_url: https://example.com/focus
+      responses:
+        '200':
+          description: 同じSource URLに対する既存の掲載依頼
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingRequestResult'
+              example:
+                id: 0193c6f7-28b8-7d27-b210-26d13b74d503
+                status: pending
+                created: false
+        '201':
+          description: 作成した掲載依頼
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingRequestResult'
+              example:
+                id: 0193c6f7-28b8-7d27-b210-26d13b74d503
+                status: pending
+                created: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 既存の匿名認証で取得したaccess token
+
+  parameters:
+    PracticeIdPath:
+      name: practiceId
+      in: path
+      required: true
+      description: Practice ID
+      schema:
+        $ref: '#/components/schemas/PracticeId'
+    ExperienceIdPath:
+      name: experienceId
+      in: path
+      required: true
+      description: Experience ID
+      schema:
+        $ref: '#/components/schemas/ExperienceId'
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      description: 1ページに返す最大件数
+      schema:
+        type: integer
+        format: uint32
+        minimum: 1
+        maximum: 100
+        default: 20
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      description: 先頭から読み飛ばす件数
+      schema:
+        type: integer
+        format: uint64
+        minimum: 0
+        default: 0
+
+  responses:
+    BadRequest:
+      description: path parameterなどのrequest形式が不正
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: invalid_id
+            message: invalid UUID
+    Unauthorized:
+      description: 認証情報がない、または無効
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: unauthorized
+            message: missing or invalid authentication
+    Forbidden:
+      description: 対象resourceを更新する権限がない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: forbidden
+            message: operation is not allowed
+    NotFound:
+      description: 対象resourceが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: not_found
+            message: resource not found
+    ValidationFailed:
+      description: Domainまたはpaginationの入力制約に違反した
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: validation_failed
+            message: validation failed
+    InternalServerError:
+      description: 予期しないserver error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: internal_error
+            message: infrastructure failure
+
+  schemas:
+    PracticeId:
+      type: string
+      format: uuid
+      description: Practiceを識別するUUID
+      examples:
+        - 0193c6f7-28b8-7d27-b210-26d13b74d501
+    ExperienceId:
+      type: string
+      format: uuid
+      description: Experienceを識別するUUID
+      examples:
+        - 0193c6f7-28b8-7d27-b210-26d13b74d502
+    ListingRequestId:
+      type: string
+      format: uuid
+      description: ListingRequestを識別するUUID
+      examples:
+        - 0193c6f7-28b8-7d27-b210-26d13b74d503
+    UserId:
+      type: string
+      format: uuid
+      description: 認証済みUserを識別するUUID
+      examples:
+        - 0193c6f7-28b8-7d27-b210-26d13b74d504
+    DateTime:
+      type: string
+      format: date-time
+      description: RFC 3339形式のUTC日時
+      examples:
+        - '2026-08-27T01:23:45Z'
+    SourceUrl:
+      type: string
+      format: uri
+      minLength: 1
+      description: 掲載元の絶対URL
+      examples:
+        - https://example.com/focus
+    ExperienceNote:
+      type:
+        - string
+        - 'null'
+      maxLength: 100
+      description: Experienceに添える任意のNote
+      examples:
+        - すぐに集中できた
+        - null
+    ListingRequestStatus:
+      type: string
+      enum:
+        - pending
+        - accepted
+        - rejected
+      description: 掲載依頼の審査状態
+
+    Practice:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/PracticeId'
+        title:
+          type: string
+          minLength: 1
+          description: ためしてよかった行動の見出し
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+
+    Source:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+      properties:
+        url:
+          $ref: '#/components/schemas/SourceUrl'
+
+    PracticeDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - created_at
+        - sources
+      properties:
+        id:
+          $ref: '#/components/schemas/PracticeId'
+        title:
+          type: string
+          minLength: 1
+          description: ためしてよかった行動の見出し
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+
+    PracticePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - limit
+        - offset
+        - has_more
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Practice'
+        limit:
+          type: integer
+          format: uint32
+          minimum: 1
+          maximum: 100
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        has_more:
+          type: boolean
+          description: 次ページが存在する場合はtrue
+
+    ExperienceInput:
+      type: object
+      additionalProperties: false
+      properties:
+        note:
+          $ref: '#/components/schemas/ExperienceNote'
+
+    Experience:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - practice_id
+        - user_id
+        - note
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/ExperienceId'
+        practice_id:
+          $ref: '#/components/schemas/PracticeId'
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        note:
+          $ref: '#/components/schemas/ExperienceNote'
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        updated_at:
+          $ref: '#/components/schemas/DateTime'
+
+    ExperiencePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - limit
+        - offset
+        - has_more
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Experience'
+        limit:
+          type: integer
+          format: uint32
+          minimum: 1
+          maximum: 100
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        has_more:
+          type: boolean
+          description: 次ページが存在する場合はtrue
+
+    ListingRequestInput:
+      type: object
+      additionalProperties: false
+      required:
+        - source_url
+      properties:
+        source_url:
+          $ref: '#/components/schemas/SourceUrl'
+
+    ListingRequestResult:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - created
+      properties:
+        id:
+          $ref: '#/components/schemas/ListingRequestId'
+        status:
+          $ref: '#/components/schemas/ListingRequestStatus'
+        created:
+          type: boolean
+          description: このrequestで新規作成した場合はtrue
+
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Clientが分岐に使用できる安定したerror code
+        message:
+          type: string
+          minLength: 1
+          description: 人が読めるerror message
