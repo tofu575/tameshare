@@ -16,7 +16,6 @@ export const PracticeList = ({ practices }: Props) => {
         <li key={practice.id}>
           <article className="card">
             <h2>{practice.title}</h2>
-            <p>{practice.description}</p>
             <Link href={`/practices/${practice.id}`}>詳細を見る</Link>
           </article>
         </li>
