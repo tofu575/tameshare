@@ -17,14 +17,14 @@ install: ## 各レイヤーの依存関係を導入する
 	$(MAKE) -C backend install
 	$(MAKE) -C frontend install
 
-postgres-up: ## PostgreSQLを起動し、healthcheck後にmigrationを適用する
+up: ## PostgreSQLを起動し、healthcheck後にmigrationを適用する
 	$(MAKE) -C backend db-up
 	$(MAKE) -C backend db-migrate
 
-postgres-down: ## ローカルPostgreSQLを停止する
+down: ## ローカルPostgreSQLを停止する
 	$(MAKE) -C backend db-down
 
-db-migrate: ## BackendのDB migrationを適用する
+migrate: ## BackendのDB migrationを適用する
 	$(MAKE) -C backend db-migrate
 
 backend-run: ## Cargo runでBackend APIを起動する

@@ -32,6 +32,14 @@ make db-up
 make db-migrate
 ```
 
+ローカルDBを`psql`で確認する場合は、`backend`ディレクトリで次を実行します。
+
+```bash
+docker compose exec postgres psql -U tameshare -d tameshare
+```
+
+接続後は`\dt`でテーブル一覧を表示し、`\q`で終了できます。
+
 `TEST_DATABASE_URL`は通常DBと分離し、DB名が`_test`で終わる接続先を指定してください。
 Composeの初回初期化では通常DBとは別に`tameshare_test`を作成します。
 
