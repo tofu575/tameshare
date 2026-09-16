@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup env install postgres-up postgres-down db-migrate backend-run frontend-run api-generate smoke check
+.PHONY: help setup env install postgres-up postgres-down db-migrate seed-production seed-development backend-run frontend-run api-generate smoke check
 
 help: ## 利用可能なRootターゲットを表示
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -26,6 +26,12 @@ down: ## ローカルPostgreSQLを停止する
 
 migrate: ## BackendのDB migrationを適用する
 	$(MAKE) -C backend db-migrate
+
+seed-production: ## 本番用の初期コンテンツSQLを適用する
+	$(MAKE) -C backend seed-production
+
+seed-development: ## 本番用と開発用のseed SQLを適用する
+	$(MAKE) -C backend seed-development
 
 backend-run: ## Cargo runでBackend APIを起動する
 	$(MAKE) -C backend run

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install run build release test integration-test fmt fmt-check clippy check clean db-up db-down db-migrate up down
+.PHONY: help install run build release test integration-test fmt fmt-check clippy check clean db-up db-down db-migrate seed-production seed-development up down
 
 help: ## 利用可能なターゲットを表示
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -42,6 +42,12 @@ db-down: ## ローカルPostgreSQLを停止
 db-migrate: ## Diesel CLIでmigrationを適用
 	@command -v diesel >/dev/null || { echo "diesel CLIが必要です: cargo install diesel_cli --no-default-features --features postgres"; exit 1; }
 	direnv exec . env RUST_LOG=warn diesel migration run
+
+seed-production: ## DATABASE_URLへ本番用seed SQLを適用
+	direnv exec . ./scripts/run-seeds.sh production
+
+seed-development: seed-production ## DATABASE_URLへ本番用・開発用seed SQLを適用
+	direnv exec . ./scripts/run-seeds.sh development
 
 up: db-up ## db-upの互換alias
 

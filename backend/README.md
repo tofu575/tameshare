@@ -15,6 +15,7 @@ gateway/postgres_gateway/# Diesel + PostgreSQL Repository実装
 libs/wire/               # 依存関係を組み立てる Composition Root
 macros/                  # 汎用 derive macro の例
 migrations/              # Diesel migrations
+seeds/                   # 初期コンテンツを投入するSQL
 ```
 
 依存の流れは `Actix handler -> Interactor -> Port <- Gateway` です。
@@ -54,6 +55,17 @@ diesel migration run
 Repository integration test自身も、開始時にmigrationを全rollbackしてから再適用します。
 ローカルビルドにはlibpqが必要です。Homebrewのkeg-only配置は自動検出し、
 それ以外の非標準配置では`PQ_LIB_DIR`を指定できます。
+
+## Seed
+
+Migration適用後に、`backend`ディレクトリから初期コンテンツSQLを実行します。`psql`コマンドがPATH上に必要です。接続先は`.envrc`の`DATABASE_URL`です。
+
+```bash
+make seed-production   # seeds/production/*.sql を適用
+make seed-development  # 本番用を適用後、seeds/development/*.sql を適用
+```
+
+リポジトリのルートからは`make seed-production`または`make seed-development`を実行できます。現在はseed SQLがないため、実行してもデータは追加されません。SQLの配置先と方針は[seeds/README.md](seeds/README.md)を参照してください。
 
 ## 主なRoutes
 
