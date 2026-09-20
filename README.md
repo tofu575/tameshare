@@ -99,3 +99,8 @@ READMEはコンセプトと全体構造の入口に限定しています。現�
 - [OpenAPI定義](backend/docs/openapi/tameshare.openapi.yaml)
 - [Backendのローカル開発・テスト手順](backend/README.md)
 - [Frontendの開発手順](frontend/README.md)
+- [ローカル起動・運用・公開確認手順](docs/operations/local-and-release.md)
+
+## ローカルで起動する
+
+Docker、direnv、Rust/Cargo、Node.js 24、npmを用意して、リポジトリルートで `make setup` を実行します。`backend/.envrc` の `ANONYMOUS_AUTH_SECRET` に32バイト以上のランダムな値を設定し、`direnv allow backend` を再実行してください。次に `make up`、`make seed` を実行します。別ターミナルで `make backend-run` と `make frontend-run` を維持し、`http://localhost:3000/practices` を開きます。詳細は上記の運用手順にあります。

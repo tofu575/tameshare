@@ -24,7 +24,6 @@ export default async function Page({ params }: Props) {
   return (
     <main>
       <h1>{practice.title}</h1>
-      <p>{practice.description}</p>
 
       <section>
         <h2>出典</h2>

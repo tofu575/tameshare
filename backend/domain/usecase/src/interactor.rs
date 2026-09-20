@@ -204,7 +204,7 @@ impl Interactor {
         user_id: UserId,
         practice_id: PracticeId,
         note: Option<String>,
-    ) -> Result<ExperienceOutput, UseCaseError> {
+    ) -> Result<(ExperienceOutput, bool), UseCaseError> {
         if self
             .query
             .find_practice(practice_id)
@@ -216,11 +216,12 @@ impl Interactor {
         }
         let note = note.map(ExperienceNote::try_from).transpose()?;
         let experience = Experience::new(practice_id, user_id, note);
-        self.command
-            .insert_experience(&experience)
+        let (saved, created) = self
+            .command
+            .save_experience(&experience)
             .await
             .map_err(map_repository_error)?;
-        Ok(experience_output(experience))
+        Ok((experience_output(saved), created))
     }
 
     /// 投稿者本人であることを確認してExperience Noteを更新する。

@@ -1,4 +1,5 @@
 use app::run;
+use http_handlers::AnonymousAuth;
 use libs::wire::build_interactor;
 
 #[actix_web::main]
@@ -15,5 +16,8 @@ async fn main() -> std::io::Result<()> {
     let interactor = build_interactor()
         .await
         .map_err(|error| std::io::Error::other(error.to_string()))?;
-    run(listener, interactor).await
+    let secret = std::env::var("ANONYMOUS_AUTH_SECRET")
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    let auth = AnonymousAuth::new(secret).map_err(std::io::Error::other)?;
+    run(listener, interactor, auth).await
 }

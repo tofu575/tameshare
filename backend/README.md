@@ -15,6 +15,7 @@ gateway/postgres_gateway/# Diesel + PostgreSQL Repository実装
 libs/wire/               # 依存関係を組み立てる Composition Root
 macros/                  # 汎用 derive macro の例
 migrations/              # Diesel migrations
+seeds/                   # 初期コンテンツを投入するSQL
 ```
 
 依存の流れは `Actix handler -> Interactor -> Port <- Gateway` です。
@@ -26,10 +27,21 @@ Domain crateはDiesel、PostgreSQL、HTTPへ依存しません。
 
 ```bash
 cp .envrc.template .envrc
-# .envrcのDATABASE_URL、TEST_DATABASE_URL、RUST_LOGをローカル環境に合わせて編集
+# 必要なら.envrcの接続先をローカル環境に合わせて編集
 direnv allow
-docker compose up -d --wait postgres
+make db-up
+make db-migrate
 ```
+
+`ANONYMOUS_AUTH_SECRET` は匿名セッションの署名鍵です。`.envrc` に32バイト以上のランダムな値を設定してください（例: `openssl rand -hex 32` で生成）。未設定または短すぎる値ではBackendは起動しません。鍵を変更すると既存の匿名セッションは無効になります。旧方式のUUID Cookieは移行対象外です。
+
+ローカルDBを`psql`で確認する場合は、`backend`ディレクトリで次を実行します。
+
+```bash
+docker compose exec postgres psql -U tameshare -d tameshare
+```
+
+接続後は`\dt`でテーブル一覧を表示し、`\q`で終了できます。
 
 `TEST_DATABASE_URL`は通常DBと分離し、DB名が`_test`で終わる接続先を指定してください。
 Composeの初回初期化では通常DBとは別に`tameshare_test`を作成します。
@@ -46,35 +58,47 @@ Repository integration test自身も、開始時にmigrationを全rollbackして
 ローカルビルドにはlibpqが必要です。Homebrewのkeg-only配置は自動検出し、
 それ以外の非標準配置では`PQ_LIB_DIR`を指定できます。
 
-## Routes
+## Seed
+
+Migration適用後に、`backend`ディレクトリから初期コンテンツSQLを実行します。起動中のDocker Composeの`postgres`コンテナ内で`psql`を実行するため、ホスト側への`psql`のインストールは不要です。接続先はComposeで設定した`tameshare` DBです。
+
+```bash
+make seed              # seeds/production/*.sql を適用
+make seed-production   # seeds/production/*.sql を適用
+make seed-development  # 本番用を適用後、seeds/development/*.sql を適用
+```
+
+リポジトリのルートからも同じコマンドを実行できます。`make seed`は`make seed-production`と同じ内容です。SQLの配置先と方針は[seeds/README.md](seeds/README.md)を参照してください。
+
+## 主なRoutes
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Actix の疎通確認 |
-| `GET` | `/example` | Interactor から DummyGateway を呼ぶ最小例 |
-
-`/example` は成功時に `204 No Content` を返します。
+| `GET` | `/v1/practices` | Practice一覧 |
+| `GET` | `/v1/practices/{id}` | Practice詳細 |
+| `GET, POST` | `/v1/practices/{id}/experiences` | Experience一覧・作成 |
+| `PATCH` | `/v1/experiences/{id}` | Experience更新 |
+| `POST` | `/v1/listing-requests` | 掲載リクエスト作成 |
 
 ## Run
 
 ```bash
-cargo run --bin api
+make run
 ```
 
 別ターミナルから確認できます。
 
 ```bash
 curl http://localhost:8080/health
-curl -i http://localhost:8080/example
+curl http://localhost:8080/v1/practices
 ```
 
 ## Build and test
 
 ```bash
-cargo build --workspace
-cargo test --workspace
-cargo test -p postgres_gateway --test repository_integration
+make build
+make test
+make integration-test
+make check
 ```
-
-HTTP APIと本格的なUseCaseは次段階の対象です。現状の `/example` はテンプレートの
-依存方向を保つための疎通用であり、RepositoryはまだHTTP層へ配線していません。

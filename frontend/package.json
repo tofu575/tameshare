@@ -3,22 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "api:generate": "orval",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
+    "test:e2e": "playwright test",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
   },
   "dependencies": {
+    "next": "15.5.24",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.24"
+    "react-dom": "19.1.0"
+  },
+  "overrides": {
+    "postcss": "8.5.28",
+    "undici": "7.29.1"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@biomejs/biome": "2.2.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@biomejs/biome": "2.2.0"
+    "orval": "^8.26.0",
+    "typescript": "^5"
   }
 }

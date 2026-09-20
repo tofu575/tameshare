@@ -19,8 +19,11 @@ pub trait CommandGateway: Send + Sync {
         source_id: SourceId,
     ) -> Result<(), RepositoryError>;
 
-    /// 新しいExperienceを保存する。
-    async fn insert_experience(&self, experience: &Experience) -> Result<(), RepositoryError>;
+    /// 同じUser・PracticeのExperienceを原子的に保存し、実際の行と新規作成かを返す。
+    async fn save_experience(
+        &self,
+        experience: &Experience,
+    ) -> Result<(Experience, bool), RepositoryError>;
 
     /// 既存Experienceの更新可能な値を保存する。
     async fn update_experience(&self, experience: &Experience) -> Result<(), RepositoryError>;

@@ -28,7 +28,10 @@ diesel = { version = "2.2", features = ["chrono", "postgres", "uuid"] }
 diesel-async = { version = "0.5", features = ["bb8", "postgres"] }
 diesel_migrations = "2.2"
 futures-util = { version = "=0.3.32", features = ["async-await-macro"] }
+hmac = "0.12"
+hex = "0.4"
 serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

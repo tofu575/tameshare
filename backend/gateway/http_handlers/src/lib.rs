@@ -1,3 +1,9 @@
+mod anonymous_auth;
+#[cfg(test)]
+mod anonymous_authorization_test;
+
+pub use anonymous_auth::AnonymousAuth;
+
 use actix_web::{HttpRequest, HttpResponse, ResponseError, http::StatusCode, web};
 use domain_model::{ExperienceId, PracticeId, UserId};
 use domain_usecase::{
@@ -18,6 +24,13 @@ struct PageQuery {
 #[derive(Debug, Deserialize)]
 struct ExperienceRequest {
     note: Option<String>,
+}
+
+/// 新規匿名セッションの発行結果。
+#[derive(Debug, Serialize)]
+struct AnonymousSessionResponse {
+    user_id: String,
+    token: String,
 }
 
 /// ListingRequest作成request DTO。
@@ -146,27 +159,34 @@ async fn list_experiences(
 /// POST /v1/practices/{id}/experiences: 認証ユーザーのExperienceを作成する。
 async fn create_experience(
     request: HttpRequest,
+    auth: web::Data<AnonymousAuth>,
     interactor: web::Data<Interactor>,
     path: web::Path<String>,
     body: web::Json<ExperienceRequest>,
 ) -> Result<HttpResponse, ApiError> {
-    let user_id = authenticated_user(&request)?;
+    let user_id = authenticated_user(&request, &auth)?;
     let practice_id = PracticeId::try_from(path.into_inner()).map_err(|_| invalid_id())?;
-    let output = interactor
+    let (output, created) = interactor
         .create_experience(user_id, practice_id, body.into_inner().note)
         .await
         .map_err(api_error)?;
-    Ok(HttpResponse::Created().json(experience_response(output)))
+    let status = if created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::OK
+    };
+    Ok(HttpResponse::build(status).json(experience_response(output)))
 }
 
 /// PATCH /v1/experiences/{id}: 投稿者本人のExperienceを更新する。
 async fn update_experience(
     request: HttpRequest,
+    auth: web::Data<AnonymousAuth>,
     interactor: web::Data<Interactor>,
     path: web::Path<String>,
     body: web::Json<ExperienceRequest>,
 ) -> Result<HttpResponse, ApiError> {
-    let user_id = authenticated_user(&request)?;
+    let user_id = authenticated_user(&request, &auth)?;
     let id = ExperienceId::try_from(path.into_inner()).map_err(|_| invalid_id())?;
     let output = interactor
         .update_experience(user_id, id, body.into_inner().note)
@@ -178,11 +198,15 @@ async fn update_experience(
 /// POST /v1/listing-requests: URL掲載依頼を競合安全に作成する。
 async fn create_listing_request(
     request: HttpRequest,
+    auth: web::Data<AnonymousAuth>,
     interactor: web::Data<Interactor>,
     body: web::Json<ListingRequestBody>,
 ) -> Result<HttpResponse, ApiError> {
     let output = interactor
-        .create_listing_request(authenticated_user(&request)?, body.into_inner().source_url)
+        .create_listing_request(
+            authenticated_user(&request, &auth)?,
+            body.into_inner().source_url,
+        )
         .await
         .map_err(api_error)?;
     let status = if output.created {
@@ -193,6 +217,15 @@ async fn create_listing_request(
     Ok(HttpResponse::build(status).json(listing_request_response(output)))
 }
 
+/// POST /v1/anonymous-sessions: 署名済みの匿名Bearer tokenを発行する。
+async fn create_anonymous_session(auth: web::Data<AnonymousAuth>) -> HttpResponse {
+    let (user_id, token) = auth.issue();
+    HttpResponse::Created().json(AnonymousSessionResponse {
+        user_id: user_id.to_string(),
+        token,
+    })
+}
+
 /// 公開API routeをまとめて登録する。
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.route(
@@ -201,6 +234,10 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     )
     .service(
         web::scope("/v1")
+            .route(
+                "/anonymous-sessions",
+                web::post().to(create_anonymous_session),
+            )
             .route("/practices", web::get().to(list_practices))
             .route("/practices/{id}", web::get().to(get_practice))
             .route(
@@ -225,8 +262,8 @@ fn page_input(query: &PageQuery) -> Result<PageInput, ApiError> {
     .map_err(api_error)
 }
 
-/// Bearer UUIDから認証済みUserIdを抽出する。
-fn authenticated_user(request: &HttpRequest) -> Result<UserId, ApiError> {
+/// 署名済みBearer tokenから認証済みUserIdを抽出する。
+fn authenticated_user(request: &HttpRequest, auth: &AnonymousAuth) -> Result<UserId, ApiError> {
     let value = request
         .headers()
         .get("Authorization")
@@ -235,12 +272,12 @@ fn authenticated_user(request: &HttpRequest) -> Result<UserId, ApiError> {
         .ok_or_else(|| ApiError {
             status: StatusCode::UNAUTHORIZED,
             code: "unauthenticated",
-            message: "a bearer user ID is required".into(),
+            message: "a bearer token is required".into(),
         })?;
-    UserId::try_from(value.to_owned()).map_err(|_| ApiError {
+    auth.verify(value).ok_or_else(|| ApiError {
         status: StatusCode::UNAUTHORIZED,
         code: "unauthenticated",
-        message: "the bearer user ID is invalid".into(),
+        message: "the bearer token is invalid".into(),
     })
 }
 
@@ -385,8 +422,11 @@ mod tests {
         ) -> Result<(), RepositoryError> {
             Ok(())
         }
-        async fn insert_experience(&self, _: &Experience) -> Result<(), RepositoryError> {
-            Ok(())
+        async fn save_experience(
+            &self,
+            value: &Experience,
+        ) -> Result<(Experience, bool), RepositoryError> {
+            Ok((value.clone(), true))
         }
         async fn update_experience(&self, _: &Experience) -> Result<(), RepositoryError> {
             Ok(())
@@ -449,12 +489,18 @@ mod tests {
         Interactor::new(repository.clone(), repository)
     }
 
+    /// HTTPテスト専用の固定秘密鍵で匿名tokenを発行する。
+    fn test_auth() -> AnonymousAuth {
+        AnonymousAuth::new("http-handler-test-secret-at-least-32-bytes".into()).unwrap()
+    }
+
     /// malformed UUIDが400になることを確認する。
     #[actix_web::test]
     async fn invalid_practice_id_returns_bad_request() {
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(interactor()))
+                .app_data(web::Data::new(test_auth()))
                 .configure(configure_routes),
         )
         .await;
@@ -474,6 +520,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(interactor()))
+                .app_data(web::Data::new(test_auth()))
                 .configure(configure_routes),
         )
         .await;
@@ -495,6 +542,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(interactor()))
+                .app_data(web::Data::new(test_auth()))
                 .configure(configure_routes),
         )
         .await;
@@ -503,10 +551,7 @@ mod tests {
             &app,
             test::TestRequest::post()
                 .uri(&uri)
-                .insert_header((
-                    "Authorization",
-                    format!("Bearer {}", domain_model::UserId::generate()),
-                ))
+                .insert_header(("Authorization", format!("Bearer {}", test_auth().issue().1)))
                 .insert_header(("Content-Type", "application/json"))
                 .set_payload("{")
                 .to_request(),

@@ -5,7 +5,6 @@ export type Source = {
 export type Practice = {
   id: string;
   title: string;
-  description: string;
-  createdAt?: string;
+  createdAt: string;
   sources?: Source[];
 };

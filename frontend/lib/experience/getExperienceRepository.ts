@@ -2,9 +2,8 @@ import "server-only";
 
 import type { ExperienceRepository } from "./ExperienceRepository";
 
+// Generated Clientを利用するExperience Repositoryを返す。
 export async function getExperienceRepository(): Promise<ExperienceRepository> {
-  const { MockExperienceRepository } = await import(
-    "@/lib/dev/MockExperienceRepository"
-  );
-  return new MockExperienceRepository();
+  const { ApiExperienceRepository } = await import("./ApiExperienceRepository");
+  return new ApiExperienceRepository();
 }

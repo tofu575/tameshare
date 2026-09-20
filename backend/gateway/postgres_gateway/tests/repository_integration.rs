@@ -113,9 +113,11 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
         UserId::generate(),
         Some(ExperienceNote::try_from("すぐに集中できた").unwrap()),
     );
-    CommandGateway::insert_experience(&gateway, &experience)
+    let (saved, created) = CommandGateway::save_experience(&gateway, &experience)
         .await
         .unwrap();
+    assert!(created);
+    assert_eq!(saved, experience);
     assert_eq!(
         QueryGateway::find_experience(&gateway, experience.id())
             .await
@@ -134,6 +136,45 @@ async fn repositories_round_trip_relations_and_enforce_listing_request_uniquenes
             .note(),
         None
     );
+
+    let repeated = Experience::new(
+        first_practice.id(),
+        experience.user_id(),
+        Some(ExperienceNote::try_from("再投稿").unwrap()),
+    );
+    let (saved, created) = CommandGateway::save_experience(&gateway, &repeated)
+        .await
+        .unwrap();
+    assert!(!created);
+    assert_eq!(saved.id(), experience.id());
+    assert_eq!(saved.note().unwrap().as_str(), "再投稿");
+    let concurrent_user = UserId::generate();
+    let first = Experience::new(
+        first_practice.id(),
+        concurrent_user,
+        Some(ExperienceNote::try_from("並行A").unwrap()),
+    );
+    let second = Experience::new(
+        first_practice.id(),
+        concurrent_user,
+        Some(ExperienceNote::try_from("並行B").unwrap()),
+    );
+    let (first_result, second_result) = tokio::join!(
+        CommandGateway::save_experience(&gateway, &first),
+        CommandGateway::save_experience(&gateway, &second),
+    );
+    let (first_saved, first_created) = first_result.unwrap();
+    let (second_saved, second_created) = second_result.unwrap();
+    assert_ne!(first_created, second_created);
+    assert_eq!(first_saved.id(), second_saved.id());
+    let matches: Vec<_> =
+        QueryGateway::list_experiences_by_practice(&gateway, first_practice.id(), 100, 0)
+            .await
+            .unwrap()
+            .into_iter()
+            .filter(|value| value.user_id() == concurrent_user)
+            .collect();
+    assert_eq!(matches.len(), 1);
 
     let listing_url = SourceUrl::try_from("https://example.com/request-me").unwrap();
     let mut first = ListingRequest::new(listing_url.clone(), UserId::generate());
