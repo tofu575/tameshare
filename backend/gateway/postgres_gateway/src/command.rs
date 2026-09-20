@@ -10,6 +10,7 @@ use domain_usecase::gateway::{CommandGateway, RepositoryError};
 use crate::{
     error::PostgresqlGatewayErrorMapper,
     postgresql_gateway::PostgresqlGateway,
+    row::ExperienceRow,
     schema::{experiences, listing_requests, practice_sources, practices, sources},
 };
 
@@ -73,10 +74,13 @@ impl CommandGateway for PostgresqlGateway {
         Ok(())
     }
 
-    /// ExperienceをDomain ModelからDB列へ変換して保存する。
-    async fn insert_experience(&self, experience: &Experience) -> Result<(), RepositoryError> {
+    /// User・Practiceの一意制約を使いExperienceを原子的に保存する。
+    async fn save_experience(
+        &self,
+        experience: &Experience,
+    ) -> Result<(Experience, bool), RepositoryError> {
         let mut connection = self.connection().await?;
-        diesel::insert_into(experiences::table)
+        let row = diesel::insert_into(experiences::table)
             .values((
                 experiences::id.eq(*experience.id().as_uuid()),
                 experiences::practice_id.eq(*experience.practice_id().as_uuid()),
@@ -85,10 +89,26 @@ impl CommandGateway for PostgresqlGateway {
                 experiences::created_at.eq(experience.created_at()),
                 experiences::updated_at.eq(experience.updated_at()),
             ))
-            .execute(&mut connection)
+            .on_conflict((experiences::user_id, experiences::practice_id))
+            .do_update()
+            .set((
+                experiences::note.eq(experience.note().map(ExperienceNote::as_str)),
+                experiences::updated_at.eq(experience.updated_at()),
+            ))
+            .returning((
+                experiences::id,
+                experiences::practice_id,
+                experiences::user_id,
+                experiences::note,
+                experiences::created_at,
+                experiences::updated_at,
+            ))
+            .get_result::<ExperienceRow>(&mut connection)
             .await
             .map_err(PostgresqlGatewayErrorMapper::map)?;
-        Ok(())
+        let saved: Experience = row.try_into()?;
+        let created = saved.id() == experience.id();
+        Ok((saved, created))
     }
 
     /// Experienceの更新可能なNoteと更新日時だけを保存する。

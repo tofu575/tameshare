@@ -30,4 +30,8 @@ make build
 make check
 ```
 
+## Browser test
+
+Backend、PostgreSQL、production seedを起動した状態で、初回だけ `npx playwright install chromium` を実行し、`make e2e-test` で主要フローを検査します。テストは新しい匿名セッションでExperienceを1件DBへ作成します。専用DBを使うCIではそのDBへseedを適用してから実行します。
+
 利用可能な全ターゲットは`make help`で確認できます。

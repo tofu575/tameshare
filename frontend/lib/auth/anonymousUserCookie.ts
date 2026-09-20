@@ -1,6 +1,6 @@
-// BackendのBearer UUIDを保持するHTTP-only Cookie設定。
+// Backendの署名付きBearer tokenを保持するHTTP-only Cookie設定。
 export const anonymousUserCookie = {
-  name: "tameshare_anonymous_user_id",
+  name: "tameshare_anonymous_session",
   options: {
     httpOnly: true,
     sameSite: "lax" as const,

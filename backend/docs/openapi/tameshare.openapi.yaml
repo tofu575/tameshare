@@ -10,7 +10,7 @@ info:
     TameshareのMVP API契約。
 
     Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
-    認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
+    匿名セッション発行APIが返す署名付きtokenをBearer credentialとして使用し、
     user IDをrequest bodyから受け取らない。
 servers:
   - url: /
@@ -25,6 +25,25 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /v1/anonymous-sessions:
+    post:
+      tags:
+        - Experiences
+      summary: 署名付き匿名セッションを発行する
+      operationId: createAnonymousSession
+      security: []
+      responses:
+        '201':
+          description: 新しい匿名セッション
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnonymousSession'
+              example:
+                user_id: 0193c6f7-28b8-7d27-b210-26d13b74d501
+                token: 0193c6f7-28b8-7d27-b210-26d13b74d501.0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/practices:
     get:
       tags:
@@ -114,7 +133,7 @@ paths:
     post:
       tags:
         - Experiences
-      summary: 認証中UserのExperienceを記録する
+      summary: 認証中UserのExperienceを作成または更新する
       operationId: createExperience
       requestBody:
         required: true
@@ -134,6 +153,12 @@ paths:
       responses:
         '201':
           description: 作成したExperience
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experience'
+        '200':
+          description: 同じUser・Practiceの既存Experienceを更新した結果
           content:
             application/json:
               schema:
@@ -235,7 +260,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: Frontendが匿名User用に生成・保持するUser UUID
+      description: 匿名セッション発行APIから受け取る署名付きtoken
 
   parameters:
     PracticeIdPath:
@@ -331,6 +356,18 @@ components:
             message: infrastructure failure
 
   schemas:
+    AnonymousSession:
+      type: object
+      description: Backendが発行した匿名ユーザーの署名付きセッション
+      additionalProperties: false
+      required: [user_id, token]
+      properties:
+        user_id:
+          $ref: '#/components/schemas/UserId'
+        token:
+          type: string
+          minLength: 101
+          description: User IDとHMAC署名を含むBearer token
     PracticeId:
       type: string
       format: uuid

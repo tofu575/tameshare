@@ -33,9 +33,20 @@ impl CommandGateway for FakeRepository {
     ) -> Result<(), RepositoryError> {
         Ok(())
     }
-    async fn insert_experience(&self, value: &Experience) -> Result<(), RepositoryError> {
-        self.experiences.lock().unwrap().push(value.clone());
-        Ok(())
+    async fn save_experience(
+        &self,
+        value: &Experience,
+    ) -> Result<(Experience, bool), RepositoryError> {
+        let mut values = self.experiences.lock().unwrap();
+        if let Some(existing) = values.iter_mut().find(|item| {
+            item.user_id() == value.user_id() && item.practice_id() == value.practice_id()
+        }) {
+            existing.update_note(value.note().cloned());
+            Ok((existing.clone(), false))
+        } else {
+            values.push(value.clone());
+            Ok((value.clone(), true))
+        }
     }
     async fn update_experience(&self, value: &Experience) -> Result<(), RepositoryError> {
         let mut values = self.experiences.lock().unwrap();
@@ -196,10 +207,11 @@ async fn reads_practices_and_detail() {
 async fn creates_validates_and_authorizes_experience() {
     let (usecase, _, practice) = fixture();
     let owner = UserId::generate();
-    let created = usecase
+    let (created, is_new) = usecase
         .create_experience(owner, practice.id(), Some("続けやすい".into()))
         .await
         .unwrap();
+    assert!(is_new);
     assert!(matches!(
         usecase
             .create_experience(owner, practice.id(), Some("あ".repeat(101)))

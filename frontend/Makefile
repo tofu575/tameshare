@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install run api-generate typecheck lint format build audit check clean
+.PHONY: help install run api-generate typecheck lint format build e2e-test audit check clean
 
 help: ## 利用可能なFrontendターゲットを表示
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -25,6 +25,9 @@ format: ## Biomeでコードをフォーマット
 
 build: ## Next.js production buildを作成
 	direnv exec . npm run build
+
+e2e-test: ## 起動中のBackend・DBを使ってFrontend主要操作を検査
+	direnv exec . npm run test:e2e
 
 audit: ## npm依存関係の脆弱性を検査
 	npm audit

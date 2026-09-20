@@ -1,9 +1,9 @@
 import "server-only";
 
-import { getOrCreateAnonymousUserId } from "./getOrCreateAnonymousUserId";
+import { getOrCreateAnonymousToken } from "./getOrCreateAnonymousToken";
 
-// 変更系APIへ匿名UserのBearer UUIDを付与する。
+// 変更系APIへ署名付きの匿名Bearer tokenを付与する。
 export async function getAuthenticatedRequestOptions(): Promise<RequestInit> {
-  const userId = await getOrCreateAnonymousUserId();
-  return { headers: { Authorization: `Bearer ${userId}` } };
+  const token = await getOrCreateAnonymousToken();
+  return { headers: { Authorization: `Bearer ${token}` } };
 }

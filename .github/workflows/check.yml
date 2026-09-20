@@ -1,0 +1,75 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      TEST_DATABASE_URL: postgres://tameshare:tameshare@localhost:54329/tameshare_test
+      BACKEND_API_URL: http://127.0.0.1:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Prepare Rust and PostgreSQL client library
+        run: |
+          rustup update stable
+          rustup default stable
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+      - name: Start test PostgreSQL
+        run: docker compose -f backend/compose.yaml up -d --wait postgres
+      - name: Check Backend
+        working-directory: backend
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo test --workspace
+      - name: Seed test database
+        run: |
+          for seed in backend/seeds/production/*.sql; do
+            docker compose -f backend/compose.yaml exec -T postgres \
+              psql -X --set ON_ERROR_STOP=1 -U tameshare -d tameshare_test -f /dev/stdin < "$seed"
+          done
+      - name: Start Backend for browser test
+        working-directory: backend
+        run: |
+          DATABASE_URL="$TEST_DATABASE_URL" ANONYMOUS_AUTH_SECRET="$(openssl rand -hex 32)" \
+            cargo run --bin api > "$RUNNER_TEMP/tameshare-api.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/tameshare-api.log"
+          exit 1
+      - name: Install Frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Check Frontend
+        working-directory: frontend
+        run: |
+          npm audit
+          npm exec tsc -- --noEmit
+          npm run lint
+          npm run build
+      - name: Test browser flow
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: Upload browser test failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: frontend/test-results/
+          if-no-files-found: ignore
+      - name: Show Backend log on failure
+        if: failure()
+        run: test ! -f "$RUNNER_TEMP/tameshare-api.log" || tail -100 "$RUNNER_TEMP/tameshare-api.log"

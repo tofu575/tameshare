@@ -33,6 +33,8 @@ make db-up
 make db-migrate
 ```
 
+`ANONYMOUS_AUTH_SECRET` は匿名セッションの署名鍵です。`.envrc` に32バイト以上のランダムな値を設定してください（例: `openssl rand -hex 32` で生成）。未設定または短すぎる値ではBackendは起動しません。鍵を変更すると既存の匿名セッションは無効になります。旧方式のUUID Cookieは移行対象外です。
+
 ローカルDBを`psql`で確認する場合は、`backend`ディレクトリで次を実行します。
 
 ```bash

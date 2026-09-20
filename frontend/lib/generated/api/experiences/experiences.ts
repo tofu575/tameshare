@@ -5,12 +5,13 @@
  * TameshareのMVP API契約。
  *
  * Practiceの閲覧、Experienceの記録・更新、掲載依頼の作成を提供する。
- * 認証が必要なoperationでは匿名User UUIDをBearer credentialとして使用し、
+ * 匿名セッション発行APIが返す署名付きtokenをBearer credentialとして使用し、
  * user IDをrequest bodyから受け取らない。
  *
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AnonymousSession,
   BadRequestResponse,
   Experience,
   ExperienceInput,
@@ -24,6 +25,48 @@ import type {
 } from '../../model';
 
 import { apiFetch } from '../../../api/apiFetch';
+
+export type createAnonymousSessionResponse201 = {
+  data: AnonymousSession
+  status: 201
+}
+
+export type createAnonymousSessionResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type createAnonymousSessionResponseSuccess = (createAnonymousSessionResponse201) & {
+  headers: Headers;
+};
+export type createAnonymousSessionResponseError = (createAnonymousSessionResponse500) & {
+  headers: Headers;
+};
+
+export type createAnonymousSessionResponse = (createAnonymousSessionResponseSuccess | createAnonymousSessionResponseError)
+
+export const getCreateAnonymousSessionUrl = () => {
+
+
+
+
+  return `/v1/anonymous-sessions`
+}
+
+/**
+ * @summary 署名付き匿名セッションを発行する
+ */
+export const createAnonymousSession = async ( options?: Parameters<typeof apiFetch>[1]): Promise<createAnonymousSessionResponse> => {
+
+  return apiFetch<createAnonymousSessionResponse>(getCreateAnonymousSessionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
 
 export type listExperiencesResponse200 = {
   data: ExperiencePage
@@ -91,6 +134,11 @@ export const listExperiences = async (practiceId: string,
 );}
 
 
+export type createExperienceResponse200 = {
+  data: Experience
+  status: 200
+}
+
 export type createExperienceResponse201 = {
   data: Experience
   status: 201
@@ -121,7 +169,7 @@ export type createExperienceResponse500 = {
   status: 500
 }
 
-export type createExperienceResponseSuccess = (createExperienceResponse201) & {
+export type createExperienceResponseSuccess = (createExperienceResponse200 | createExperienceResponse201) & {
   headers: Headers;
 };
 export type createExperienceResponseError = (createExperienceResponse400 | createExperienceResponse401 | createExperienceResponse404 | createExperienceResponse422 | createExperienceResponse500) & {
@@ -139,7 +187,7 @@ export const getCreateExperienceUrl = (practiceId: string,) => {
 }
 
 /**
- * @summary 認証中UserのExperienceを記録する
+ * @summary 認証中UserのExperienceを作成または更新する
  */
 export const createExperience = async (practiceId: string,
     experienceInput: ExperienceInput, options?: Parameters<typeof apiFetch>[1]): Promise<createExperienceResponse> => {
@@ -147,8 +195,16 @@ export const createExperience = async (practiceId: string,
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return apiFetch<createExperienceResponse>(getCreateExperienceUrl(practiceId),
   {
@@ -221,8 +277,16 @@ export const updateExperience = async (experienceId: string,
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
     if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Array.isArray(h)) return Object.fromEntries(h);
-    return h;
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
   };
 return apiFetch<updateExperienceResponse>(getUpdateExperienceUrl(experienceId),
   {
