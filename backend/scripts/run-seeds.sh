@@ -18,10 +18,7 @@ if ((${#seed_files[@]} == 0)); then
   exit 0
 fi
 
-: "${DATABASE_URL:?DATABASE_URLを設定してください}"
-command -v psql >/dev/null || { echo "psqlコマンドが必要です" >&2; exit 1; }
-
 for seed_file in "${seed_files[@]}"; do
   echo "適用中: $seed_file"
-  psql -X --set ON_ERROR_STOP=1 --single-transaction --dbname "$DATABASE_URL" --file "$seed_file"
+  docker compose exec -T postgres psql -X --set ON_ERROR_STOP=1 -U tameshare -d tameshare -f /dev/stdin < "$seed_file"
 done

@@ -32,7 +32,8 @@ INSERT INTO practices (id, title, created_at) VALUES
     ('01a0acc8-b76e-7f00-a2ee-0aac9d9beeb4', '洗剤や洗濯ネットを、洗濯機に取り付けた収納へ置く', '2026-09-17T00:00:00Z'),
     ('01a0acc8-b76f-7eca-8297-9a00676671be', 'シラバスの学習目標を、復習する内容のチェックリストとして使う', '2026-09-17T00:00:00Z'),
     ('01a0acc8-b770-7fdd-8789-47c19796cc49', '肉を切る前に、野菜を全部切る', '2026-09-17T00:00:00Z'),
-    ('01a0acc8-b771-7d65-b857-c4dc1b6dd92d', '料理の待ち時間に、使い終わった道具だけ洗う', '2026-09-17T00:00:00Z');
+    ('01a0acc8-b771-7d65-b857-c4dc1b6dd92d', '料理の待ち時間に、使い終わった道具だけ洗う', '2026-09-17T00:00:00Z')
+    ON CONFLICT DO NOTHING;
 
 INSERT INTO sources (id, url, created_at) VALUES
     ('01a0acc8-b772-7721-ad50-ab79f0a45952', 'https://www.lifehacker.jp/article/2302stash-your-keys-under-important-items-so-you-dont-leave/', '2026-09-17T00:00:00Z'),
@@ -64,7 +65,8 @@ INSERT INTO sources (id, url, created_at) VALUES
     ('01a0acc8-b78f-735c-94df-e3534258627d', 'https://www.lemon8-app.com/moon_ismart/6972781510000787973', '2026-09-17T00:00:00Z'),
     ('01a0acc8-b790-76a2-922b-c32f0838cae2', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6022773/', '2026-09-17T00:00:00Z'),
     ('01a0acc8-b791-769f-95e3-42148f73686f', 'https://www.fda.gov/food/people-risk-foodborne-illness/separating-food-food-safety-moms-be', '2026-09-17T00:00:00Z'),
-    ('01a0acc8-b792-7f8a-9993-4caea3c539d7', 'https://www.reddit.com/r/Cooking/comments/1n8bs2j', '2026-09-17T00:00:00Z');
+    ('01a0acc8-b792-7f8a-9993-4caea3c539d7', 'https://www.reddit.com/r/Cooking/comments/1n8bs2j', '2026-09-17T00:00:00Z')
+    ON CONFLICT DO NOTHING;
 
 INSERT INTO practice_sources (practice_id, source_id) VALUES
     ('01a0acc8-b74c-7f57-82b9-3236d67f29ed', '01a0acc8-b772-7721-ad50-ab79f0a45952'),
@@ -100,6 +102,7 @@ INSERT INTO practice_sources (practice_id, source_id) VALUES
     ('01a0acc8-b76e-7f00-a2ee-0aac9d9beeb4', '01a0acc8-b78f-735c-94df-e3534258627d'),
     ('01a0acc8-b76f-7eca-8297-9a00676671be', '01a0acc8-b790-76a2-922b-c32f0838cae2'),
     ('01a0acc8-b770-7fdd-8789-47c19796cc49', '01a0acc8-b791-769f-95e3-42148f73686f'),
-    ('01a0acc8-b771-7d65-b857-c4dc1b6dd92d', '01a0acc8-b792-7f8a-9993-4caea3c539d7');
+    ('01a0acc8-b771-7d65-b857-c4dc1b6dd92d', '01a0acc8-b792-7f8a-9993-4caea3c539d7')
+    ON CONFLICT DO NOTHING;
 
 COMMIT;

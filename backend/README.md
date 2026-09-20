@@ -58,14 +58,15 @@ Repository integration test自身も、開始時にmigrationを全rollbackして
 
 ## Seed
 
-Migration適用後に、`backend`ディレクトリから初期コンテンツSQLを実行します。`psql`コマンドがPATH上に必要です。接続先は`.envrc`の`DATABASE_URL`です。
+Migration適用後に、`backend`ディレクトリから初期コンテンツSQLを実行します。起動中のDocker Composeの`postgres`コンテナ内で`psql`を実行するため、ホスト側への`psql`のインストールは不要です。接続先はComposeで設定した`tameshare` DBです。
 
 ```bash
+make seed              # seeds/production/*.sql を適用
 make seed-production   # seeds/production/*.sql を適用
 make seed-development  # 本番用を適用後、seeds/development/*.sql を適用
 ```
 
-リポジトリのルートからは`make seed-production`または`make seed-development`を実行できます。現在はseed SQLがないため、実行してもデータは追加されません。SQLの配置先と方針は[seeds/README.md](seeds/README.md)を参照してください。
+リポジトリのルートからも同じコマンドを実行できます。`make seed`は`make seed-production`と同じ内容です。SQLの配置先と方針は[seeds/README.md](seeds/README.md)を参照してください。
 
 ## 主なRoutes
 
